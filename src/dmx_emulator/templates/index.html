@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DMX Emulator Renderer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #333;
+            color: white;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+        .content {
+            margin: 20px auto;
+            width: 80%;
+        }
+        .loading {
+            font-size: 16px;
+            color: #999;
+        }
+
+        .stage {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background-color: #222;
+            padding: 20px;
+            border: 2px solid #444;
+            margin-top: 20px;
+        }
+        .light {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 50px;
+            font-size: 10px;
+            color: white;
+            font-weight: bold;
+        }
+
+    </style>
+</head>
+<body>
+    <header>
+        <h1>DMX Emulator Renderer</h1>
+        <p>Emulation of DMX lights in realtime</p>
+    </header>
+    <div class="content">
+        <div id="lights-container" class="loading">Loading lights...</div>
+    </div>
+    <center>
+        <h6>(C) 2024 Luis Schuimer</h6>
+    </center>
+    <script>
+        async function fetchLights() {
+            try {
+                const response = await fetch('/update');
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const html = await response.text();
+                document.getElementById('lights-container').innerHTML = html;
+            } catch (error) {
+                document.getElementById('lights-container').innerHTML = `<p>Renderer is offline</p>`;
+            }
+        }
+
+        // Fetch lights every 0.2 seconds
+        setInterval(fetchLights, 75);
+
+        // Initial load
+        fetchLights();
+    </script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<body>
+    <div class="stage">
+        {% for name, light in lights.items() %}
+        <div
+            class="light"
+            style="background-color: rgb({{ light['r'] or 0 }}, {{ light['g'] or 0 }}, {{ light['b'] or 0 }}); opacity: {{ (light['br'] / 100) if light['br'] is not none else 1 }};"
+        >
+            {{ name }}
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>
