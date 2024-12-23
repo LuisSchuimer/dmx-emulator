@@ -50,6 +50,7 @@ class emulator:
         self.config = config
         self.render_server = render_server
         self.sleep_time = 0.001
+        self.started = False
     
     def set_channel(self, CHANNEL: int, VALUE: int):
         if VALUE > 255: raise Exception(f"Send value cannot be bigger than 255 (is {VALUE})")
@@ -57,28 +58,8 @@ class emulator:
             for channel in range(light.config["channels"][0], light.config["channels"][1]+1): 
                 if channel == CHANNEL: 
                     light.config["channel_config"][channel - light.config["channels"][0]].value = VALUE
-                    response = requests.post(
-                        f"{self.render_server}/update_light",
-                        data={
-                            "name": light.name,
-                            "r": light.config["channel_config"][0].value,
-                            "g": light.config["channel_config"][1].value,
-                            "b": light.config["channel_config"][2].value,
-                            "br": light.config["channel_config"][3].value / 255
-                        }
-                    )
-                    sleep(self.sleep_time)
-                    print(f"Send {VALUE} to {light.name} on channel {CHANNEL}")
-    
-    
-    def set_channels(self, CHANGES: list[tuple]):
-        for change in CHANGES:
-            if change[1] > 255: raise Exception(f"Send value cannot be bigger than 255 (is {change[1]})")
-            for light in self.config.lights:
-                for channel in range(light.config["channels"][0], light.config["channels"][1]+1):
-                    if channel == change[0]: 
-                        light.config["channel_config"][channel - light.config["channels"][0]].value = change[1]
-                        response = requests.post(
+                    if self.started:
+                        requests.post(
                             f"{self.render_server}/update_light",
                             data={
                                 "name": light.name,
@@ -89,10 +70,31 @@ class emulator:
                             }
                         )
                         sleep(self.sleep_time)
-                        print(f"Send {change[1]} to {light.name} on channel {change[0]}")
+    
+    
+    def set_channels(self, CHANGES: list[tuple]):
+        for change in CHANGES:
+            if change[1] > 255: raise Exception(f"Send value cannot be bigger than 255 (is {change[1]})")
+            for light in self.config.lights:
+                for channel in range(light.config["channels"][0], light.config["channels"][1]+1):
+                    if channel == change[0]: 
+                        light.config["channel_config"][channel - light.config["channels"][0]].value = change[1]
+                        if self.started:
+                            requests.post(
+                                f"{self.render_server}/update_light",
+                                data={
+                                    "name": light.name,
+                                    "r": light.config["channel_config"][0].value,
+                                    "g": light.config["channel_config"][1].value,
+                                    "b": light.config["channel_config"][2].value,
+                                    "br": light.config["channel_config"][3].value / 255
+                                }
+                            )
+                            sleep(self.sleep_time)
 
     
-    def render(self):
+    def start_render(self):
+        self.started = True
         requests.post(f"{self.render_server}/clear")
         for light in self.config.lights:
             requests.post(
