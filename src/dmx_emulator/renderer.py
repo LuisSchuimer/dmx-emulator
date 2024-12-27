@@ -20,7 +20,7 @@ def update():
         lights=lights
     )
 
-@app.route("/add", methods=["POST"])
+@app.route("/add_light", methods=["POST"])
 def add():
     lights[request.form.get("name")] = {
         "r": request.form.get("r", type=int),
