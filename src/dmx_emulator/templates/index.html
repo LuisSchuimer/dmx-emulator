@@ -21,7 +21,6 @@
             font-size: 16px;
             color: #999;
         }
-
         .stage {
             display: flex;
             justify-content: space-around;
@@ -41,7 +40,6 @@
             color: white;
             font-weight: bold;
         }
-
     </style>
 </head>
 <body>
@@ -56,24 +54,39 @@
         <h6>(C) 2024 Luis Schuimer</h6>
     </center>
     <script>
-        async function fetchLights() {
+        const lightsContainer = document.getElementById('lights-container');
+
+        const eventSource = new EventSource('/listen');
+
+        eventSource.onmessage = (event) => {
             try {
-                const response = await fetch('/update');
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
+                // Parse JSON data from the SSE message
+                const lightsData = JSON.parse(event.data);
+
+                // Clear container and dynamically render lights
+                lightsContainer.innerHTML = '';
+                const stage = document.createElement('div');
+                stage.className = 'stage';
+
+                for (const [name, light] of Object.entries(lightsData)) {
+                    const lightElement = document.createElement('div');
+                    lightElement.className = 'light';
+                    lightElement.style.backgroundColor = `rgb(${light.r || 0}, ${light.g || 0}, ${light.b || 0})`;
+                    lightElement.style.opacity = light.br ? light.br / 100 : 1;
+                    lightElement.textContent = name;
+                    stage.appendChild(lightElement);
                 }
-                const html = await response.text();
-                document.getElementById('lights-container').innerHTML = html;
+
+                lightsContainer.appendChild(stage);
             } catch (error) {
-                document.getElementById('lights-container').innerHTML = `<p>Renderer is offline</p>`;
+                console.error('Error processing SSE data:', error);
+                lightsContainer.innerHTML = `<p>Error displaying lights data</p>`;
             }
-        }
+        };
 
-        // Fetch lights every 0.2 seconds
-        setInterval(fetchLights, 75);
-
-        // Initial load
-        fetchLights();
+        eventSource.onerror = () => {
+            lightsContainer.innerHTML = `<p>Renderer is offline</p>`;
+        };
     </script>
 </body>
 </html>
