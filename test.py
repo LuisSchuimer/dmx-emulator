@@ -17,7 +17,7 @@ config.add_light(light(config=light_config(
     channels=(8, 8),
     type="My Light",
     base_values=[
-        base.COLOR("R", 100)
+        base.COLOR("R", 255) 
     ],
     channel_config={
         0: channel.BRIGHTNESS()
@@ -26,7 +26,7 @@ config.add_light(light(config=light_config(
 name="A light"))
 
 
-emulator = emulator(config, render_server="http://127.0.0.1:1234", development_mode=False)
+emulator = emulator(config, render_server=("127.0.0.1", 8001), development_mode=False)
 emulator.start_render()
 
 emulator.set_channel(0, 255)

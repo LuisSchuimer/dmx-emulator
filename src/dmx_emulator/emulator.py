@@ -1,6 +1,6 @@
-import requests
+import json
 from typing import Tuple
-from time import sleep
+import socket
 from dmx_emulator.exceptions import *
 
 class channel:
@@ -89,23 +89,55 @@ class emulator_config:
     def add_light(self, light: light):
         self.lights.append(light)
 
+
 class emulator:
-    def __init__(self, config: emulator_config, render_server: str = None, development_mode: bool = False):
+    def __init__(self, config, render_server: Tuple[str, int], development_mode: bool = False):
         self.config = config
         self.development_mode = development_mode
         self.render_server = render_server
+        self.connection = None  # Persistent socket connection
         self.sleep_time = 0.005
         self.started = False
 
-    def _get_channel_values(self, light: light) -> dict:
-        values: dict = {"r": 0, "g": 0, "b": 0, "br": 0}
+    def _establish_connection(self):
+        if not self.connection:
+            try:
+                self.connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.connection.connect(self.render_server)
+                print("Connected to renderer.")
+            except socket.error as e:
+                print(f"Error establishing connection: {e}")
+                self.connection = None
+
+    def _close_connection(self):
+        if self.connection:
+            try:
+                self.connection.close()
+                print("Connection to renderer closed.")
+            except socket.error as e:
+                print(f"Error closing connection: {e}")
+            finally:
+                self.connection = None
+
+    def _send_data(self, data):
+        if not self.connection:
+            self._establish_connection()
+        if self.connection:
+            try:
+                self.connection.send(bytes(str(data), "utf-8"))
+            except socket.error as e:
+                print(f"Error sending data: {e}")
+                self._close_connection()
+
+    def _get_channel_values(self, light):
+        values = {"r": 0, "g": 0, "b": 0, "br": 0}
         for channel in light.config.channel_config.values():
             match channel.name:
                 case "R": values["r"] = int(channel.value)
                 case "G": values["g"] = int(channel.value)
                 case "B": values["b"] = int(channel.value)
                 case "BR": values["br"] = float(channel.value / 255)
-                    
+
         for base_value in light.config.base_values:
             match base_value.type:
                 case "R": values["r"] = int(base_value.value)
@@ -114,80 +146,61 @@ class emulator:
                 case "BR": values["br"] = float(base_value.value / 255)
         return values
 
-
-    def set_channel(self, CHANNEL: int, VALUE: int) -> None:
-        if VALUE > 255: raise ValueTooBig(value=VALUE)
+    def set_channel(self, CHANNEL: int, VALUE: int):
+        if VALUE > 255:
+            raise ValueTooBig(value=VALUE)
         for light in self.config.lights:
-            for channel in range(light.config.channels[0], light.config.channels[1]+1): 
-                if channel == CHANNEL: 
+            for channel in range(light.config.channels[0], light.config.channels[1] + 1):
+                if channel == CHANNEL:
                     light.config.channel_config[channel - light.config.channels[0]].value = VALUE
-                    if self.started and self.render_server:
-                        values = self._get_channel_values(light=light)
-                        try:
-                            requests.post(
-                                f"{self.render_server}/update_light",
-                                    data={
-                                        "name": str(light.name),
-                                        "r": int(values["r"]),
-                                        "g": int(values["g"]),
-                                        "b": int(values["b"]),
-                                        "br": float(values["br"])
-                                    }
-                                )
-                            sleep(self.sleep_time)
-                        except Exception as exception: 
-                            if not self.development_mode and exception == requests.exceptions.ConnectionError: raise RenderServerUnreachable(self.render_server)
-                            else: raise exception
-    
-    
-    def set_channels(self, CHANGES: list[tuple]) :
-        for change in CHANGES:
-            if change[1] > 255: raise ValueTooBig(value=change[1])
-            for light in self.config.lights:
-                for channel in range(light.config.channels[0], light.config.channels[1]+1):
-                    if channel == change[0]: 
-                        light.config.channel_config[channel - light.config.channels[0]].value = change[1]
-                        if self.started and self.render_server:
-                            values = self._get_channel_values(light=light)
-                            try:
-                                requests.post(f"{self.render_server}/update_light",
-                                    data={
-                                        "name": str(light.name),
-                                        "r": int(values["r"]),
-                                        "g": int(values["g"]),
-                                        "b": int(values["b"]),
-                                        "br": float(values["br"])
-                                    }
-                                )
-                                sleep(self.sleep_time)
-                            except Exception as exception: 
-                                if not self.development_mode and exception == requests.exceptions.ConnectionError: raise RenderServerUnreachable(self.render_server)
-                                else: raise exception
+                    if self.started:
+                        values = self._get_channel_values(light)
+                        data = {
+                            "name": str(light.name),
+                            "r": int(values["r"]),
+                            "g": int(values["g"]),
+                            "b": int(values["b"]),
+                            "br": float(values["br"]),
+                        }
+                        self._send_data(data)
 
-    
+    def set_channels(self, CHANGES: list[tuple]):
+        for change in CHANGES:
+            if change[1] > 255:
+                raise ValueTooBig(value=change[1])
+            for light in self.config.lights:
+                for channel in range(light.config.channels[0], light.config.channels[1] + 1):
+                    if channel == change[0]:
+                        light.config.channel_config[channel - light.config.channels[0]].value = change[1]
+                        if self.started:
+                            values = self._get_channel_values(light)
+                            data = {
+                                "name": str(light.name),
+                                "r": int(values["r"]),
+                                "g": int(values["g"]),
+                                "b": int(values["b"]),
+                                "br": float(values["br"]),
+                            }
+                            self._send_data(data)
+
     def start_render(self):
         self.started = True
-        try: requests.post(f"{self.render_server}/clear") 
-        except Exception as exception: 
-            if not self.development_mode and exception == requests.exceptions.ConnectionError: raise RenderServerUnreachable(self.render_server)
-            else: raise exception
+        self._establish_connection()
+        clear_data = {"clear": True}
+        self._send_data(clear_data)
 
         for light in self.config.lights:
-            if self.render_server:
-                values = self._get_channel_values(light=light)
-                try:
-                    requests.post(
-                        f"{self.render_server}/add_light",
-                        data={
-                            "name": str(light.name), 
-                            "r": int(values["r"]), 
-                            "g": int(values["g"]), 
-                            "b": int(values["b"]), 
-                            "br": float(values["br"])
-                        }
-                    )
-                    sleep(self.sleep_time)
-                except Exception as exception: 
-                    if not self.development_mode and exception == requests.exceptions.ConnectionError: raise RenderServerUnreachable(self.render_server)
-                    else: raise exception
-                
+            values = self._get_channel_values(light)
+            data = {
+                "name": str(light.name),
+                "r": int(values["r"]),
+                "g": int(values["g"]),
+                "b": int(values["b"]),
+                "br": float(values["br"]),
+            }
+            self._send_data(data)
+
+    def stop_render(self):
+        self._close_connection()
+        self.started = False
+
