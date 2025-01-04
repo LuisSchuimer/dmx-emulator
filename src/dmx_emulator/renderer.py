@@ -17,33 +17,40 @@ async def push_server(host: str, port: int):
         try:
             while True:
                 # Receive data from the client
-                data = str(client_socket.recv(100000).decode("utf-8"))
-                if not data:  # Connection closed by client
-                    print("Client disconnected")
+                try:
+                    data = str(client_socket.recv(1000).decode("utf-8")).replace("'", "\"")
+                    data = data.strip()
+                    if not data:  # Connection closed by client
+                        print("Client disconnected")
+                        break
+
+                    for op in data.split("\n"):
+                        try:
+                            res = json.loads(op)
+                        except Exception as err:
+                            continue
+
+                        # Process the received message
+                        if res.get("clear") is None:
+                            name = res["name"]
+                            if lights.get(name) is not None:
+                                lights[name]["r"] = int(res["r"])
+                                lights[name]["g"] = int(res["g"])
+                                lights[name]["b"] = int(res["b"])
+                                lights[name]["br"] = float(res["br"])
+                            else:
+                                lights[name] = {
+                                    "r": int(res["r"]),
+                                    "g": int(res["g"]),
+                                    "b": int(res["b"]),
+                                    "br": float(res["br"])
+                                }
+                        else:
+                            if res["clear"]:
+                                lights.clear()
+                    print(lights)
+                except Exception as e:
                     break
-
-                try: res = json.loads(data)
-                except Exception as err: print(err); continue
-
-                # Process the received message
-                if res.get("clear") is None:
-                    name = res["name"]
-                    if lights.get(name) is not None:
-                        lights[name]["r"] = int(res["r"])
-                        lights[name]["g"] = int(res["g"])
-                        lights[name]["b"] = int(res["b"])
-                        lights[name]["br"] = float(res["br"])
-                    else:
-                        lights[name] = {
-                            "r": int(res["r"]),
-                            "g": int(res["g"]),
-                            "b": int(res["b"]),
-                            "br": float(res["br"])
-                        }
-                else:
-                    if res["clear"]:
-                        lights.clear()
-                print("Done")
         finally:
             # Ensure the connection is closed properly
             client_socket.close()

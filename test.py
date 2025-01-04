@@ -7,6 +7,7 @@ from dmx_emulator.emulator import (
     base,
     channel
 )
+import time
 
 config = emulator_config()
 defaults = defaults()
@@ -34,8 +35,11 @@ emulator.set_channel(1, 150)
 emulator.set_channel(4, 255)
 emulator.set_channel(5, 150)
 
+emulator.set_channel(3, 255)
+emulator.set_channel(7, 255)
+
 while True:
-    for i in range(0, 256): emulator.set_channels([(1, i), (5, i), (2, i)])
+    for i in range(0, 256): emulator.set_channels([(1, i), (5, i), (2, i), (8, i)]); time.sleep(0.01)
 
 
 

@@ -7,8 +7,6 @@ authors = [
 ]
 dependencies = [
     "flask>=3.1.0",
-    "requests>=2.32.3",
-    "peewee>=3.17.8",
     "waitress>=3.0.2",
 ]
 readme = "README.md"

@@ -104,18 +104,15 @@ class emulator:
             try:
                 self.connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.connection.connect(self.render_server)
-                print("Connected to renderer.")
             except socket.error as e:
-                print(f"Error establishing connection: {e}")
                 self.connection = None
 
     def _close_connection(self):
         if self.connection:
             try:
                 self.connection.close()
-                print("Connection to renderer closed.")
             except socket.error as e:
-                print(f"Error closing connection: {e}")
+                pass #! Implement exception 
             finally:
                 self.connection = None
 
@@ -124,9 +121,9 @@ class emulator:
             self._establish_connection()
         if self.connection:
             try:
-                self.connection.send(bytes(str(data), "utf-8"))
+                self.connection.sendall(bytes(f"{str(data)}\n", "utf-8"))
             except socket.error as e:
-                print(f"Error sending data: {e}")
+                #! Implement Exception
                 self._close_connection()
 
     def _get_channel_values(self, light):
