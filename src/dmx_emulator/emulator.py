@@ -1,11 +1,13 @@
-import json
-from typing import Tuple
+from typing import (
+    Tuple,
+    Literal
+)
 import socket
 from dmx_emulator.exceptions import *
 
-class channel:
+class Channel:
     class COLOR:
-        def __init__(self, color: str):
+        def __init__(self, color: Literal["R", "G", "B"]):
             self.name = color
             self.max_value = 255
             self.min_value = 0
@@ -18,24 +20,24 @@ class channel:
             self.min_value = 0
             self.value = self.min_value
 
-class base:
+class Base:
     class COLOR:
-        def __init__(self, color: str, value):
+        def __init__(self, color: Literal["R", "G", "B"], value: int):
             self.type = color
             self.value = value
     
     class BRIGHTNESS:
-        def __init__(self, value):
+        def __init__(self, value: int):
             self.type = "BR"
             self.value = value
 
-class light_config:
+class Light_Config:
     def __init__(
             self, 
             channels: Tuple[int, int],
             type: str,
-            channel_config: dict[int, channel],
-            base_values: list[base] = []
+            channel_config: dict[int, Channel],
+            base_values: list[Base] = []
         ) -> None:
         self.channels = channels
         self.type = type
@@ -43,54 +45,54 @@ class light_config:
         self.channel_config = channel_config
 
 
-class defaults:
+class Defaults:
     def _check_if_valid(self, channel_start: int, channel_end: int):
         if channel_start > 512 or channel_end > 512: raise ChannelTooBig()
         if channel_start < 0 or channel_end <0: raise ChannelTooSmall()
 
     def rgb_light(self, channel_start: int, channel_end):
         self._check_if_valid(channel_start=channel_start, channel_end=channel_end)
-        return light_config(
+        return Light_Config(
             channels=(channel_start, channel_end),
             type="RGB Light",
             base_values=[],
             channel_config={
-                0: channel.COLOR("R"),
-                1: channel.COLOR("G"),
-                2: channel.COLOR("B"),
-                3: channel.BRIGHTNESS()
+                0: Channel.COLOR("R"),
+                1: Channel.COLOR("G"),
+                2: Channel.COLOR("B"),
+                3: Channel.BRIGHTNESS()
             }
         )
 
     def white_light(self, channel_start: int):
         self._check_if_valid(channel_start=channel_start, channel_end=channel_start)
-        return light_config(
+        return Light_Config(
             channels=(channel_start, channel_start),
             type= "White Light",
             base_values=[
-                base.COLOR(color="R", value=255),
-                base.COLOR(color="G", value=255),
-                base.COLOR(color="B", value=255)
+                Base.COLOR(color="R", value=255),
+                Base.COLOR(color="G", value=255),
+                Base.COLOR(color="B", value=255)
             ],
             channel_config= {
-                0: channel.BRIGHTNESS()
+                0: Channel.BRIGHTNESS()
             } 
         )
     
-class light:
-    def __init__(self, config: light_config, name: str = "DMX Light"):
+class Light:
+    def __init__(self, config: Light_Config, name: str = "DMX Light"):
         self.name = name
         self.config = config
 
-class emulator_config:
+class Emulator_Config:
     def __init__(self):
         self.lights: list = []
     
-    def add_light(self, light: light):
+    def add_light(self, light: Light):
         self.lights.append(light)
 
 
-class emulator:
+class Emulator:
     def __init__(self, config, render_server: Tuple[str, int], development_mode: bool = False):
         self.config = config
         self.development_mode = development_mode

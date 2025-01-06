@@ -48,7 +48,6 @@ async def push_server(host: str, port: int):
                         else:
                             if res["clear"]:
                                 lights.clear()
-                    print(lights)
                 except Exception as e:
                     break
         finally:
