@@ -72,7 +72,7 @@
                     const lightElement = document.createElement('div');
                     lightElement.className = 'light';
                     lightElement.style.backgroundColor = `rgb(${light.r || 0}, ${light.g || 0}, ${light.b || 0})`;
-                    lightElement.style.opacity = light.br ? light.br / 100 : 1;
+                    lightElement.style.opacity = light.br;
                     lightElement.textContent = name;
                     stage.appendChild(lightElement);
                 }
