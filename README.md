@@ -14,6 +14,7 @@
     - [Testing](#testing)
 6. [Dependencies](#dependencies)
 7. [Conclusion](#conclusion)
+8. [Benchmarks](#benchmark)
 
 ---
 
@@ -186,3 +187,7 @@ The `test.py` file demonstrates how to interact with the emulator by creating li
 ## Conclusion
 
 This package provides a robust way to emulate and control DMX lights via a server-client architecture. The integration of Flask for visualization and WebSockets for real-time updates offers an intuitive way to control and monitor lighting setups.
+
+## Benchmark
+![latency_test_results](https://github.com/user-attachments/assets/81e700c3-c0d8-4e5b-9229-5108719c2702)
+
