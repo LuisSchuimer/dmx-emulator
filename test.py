@@ -12,7 +12,8 @@ config = Emulator_Config()
 defaults = Defaults()
 
 config.add_light(Light(config=defaults.rgb_light(channel_start=0, channel_end=3), name="Light1"))
-config.add_light(Light(config=defaults.rgb_light(channel_start=4, channel_end=7), name="Light2"))
+for n in range(2): config.add_light(Light(config=defaults.rgb_light(channel_start=4, channel_end=7), name=f"Light"))
+
 config.add_light(Light(config=Light_Config(
     channels=(8, 8),
     type="My Light",
@@ -23,7 +24,7 @@ config.add_light(Light(config=Light_Config(
         0: Channel.BRIGHTNESS()
     }
 ), 
-name="A light"))
+name="Light"))
 
 
 emulator = Emulator(config, render_server=("127.0.0.1", 8001), development_mode=False)

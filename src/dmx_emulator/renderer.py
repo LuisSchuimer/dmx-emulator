@@ -1,12 +1,13 @@
 from flask import Flask, render_template, Response
 import asyncio
 import json
-from time import sleep
 import socket
 from waitress import serve
+from dmx_emulator.logger import log
+import datetime
 
 app = Flask(__name__)
-lights = {}
+lights = {"timestamp": ""}
 
 async def push_server(host: str, port: int):
     async def handle_connection(client_socket: socket.socket):
@@ -16,30 +17,24 @@ async def push_server(host: str, port: int):
         """
         try:
             while True:
-                # Receive data from the client
                 try:
-                    data = str(client_socket.recv(1000).decode("utf-8")).replace("'", "\"")
-                    data = data.strip()
-                    if not data:  # Connection closed by client
-                        print("Client disconnected")
-                        break
-
+                    data = str(client_socket.recv(1000).decode("utf-8")).replace("'", "\"").strip()
                     for op in data.split("\n"):
-                        try:
-                            res = json.loads(op)
-                        except Exception as err:
-                            continue
+                        try: res = json.loads(op)
+                        except: continue
 
                         # Process the received message
                         if res.get("clear") is None:
-                            name = res["name"]
-                            if lights.get(name) is not None:
-                                lights[name]["r"] = int(res["r"])
-                                lights[name]["g"] = int(res["g"])
-                                lights[name]["b"] = int(res["b"])
-                                lights[name]["br"] = float(res["br"])
+                            id = res["id"]
+                            if lights.get(id) is not None:
+                                lights[id]["name"] = str(res["name"]) 
+                                lights[id]["r"] = int(res["r"])
+                                lights[id]["g"] = int(res["g"])
+                                lights[id]["b"] = int(res["b"])
+                                lights[id]["br"] = float(res["br"])
                             else:
-                                lights[name] = {
+                                lights[id] = {
+                                    "name": str(res["name"]),
                                     "r": int(res["r"]),
                                     "g": int(res["g"]),
                                     "b": int(res["b"]),
@@ -49,7 +44,7 @@ async def push_server(host: str, port: int):
                             if res["clear"]:
                                 lights.clear()
                 except Exception as e:
-                    break
+                    log.error(e)
         finally:
             # Ensure the connection is closed properly
             client_socket.close()
@@ -59,12 +54,11 @@ async def push_server(host: str, port: int):
     push_server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     push_server.bind((host, port))
     push_server.listen(1)
-    print(f"Renderer: Push-server running ({host}:{port})")
+    print(f"Push-server running ({host}:{port})")
 
     while True:
         # Accept a single connection
         client_socket, _ = push_server.accept()
-        print("Client connected...")
 
         # Handle the connection in a blocking way
         await handle_connection(client_socket)
@@ -94,10 +88,12 @@ def listen():
     def stream():
         last_send = ""
         while True:
+            lights["timestamp"] = ""
             serialized_data = json.dumps(lights)  # Serialize as proper JSON
             if serialized_data != last_send:
                 last_send = serialized_data
-                yield _format_sse(data=serialized_data)
+                lights["timestamp"] = str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S:%f"))
+                yield _format_sse(data=json.dumps(lights))
 
     return Response(stream(), mimetype='text/event-stream')
 
@@ -108,16 +104,18 @@ def run_flask(host: str, port: int):
 
 # Main event loop
 if __name__ == "__main__":
+    push_server_host = ("127.0.0.1", 8001)
+    web_server_host = ("127.0.0.1", 1234)
     # Explicitly create a new event loop
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)  # Set the event loop explicitly
 
     # Run push_server in the asyncio event loop
-    loop.create_task(push_server(host="localhost", port=8001))
+    loop.create_task(push_server(host=push_server_host[0], port=push_server_host[1]))
 
     # Run Flask with Waitress in a separate thread
     from threading import Thread
-    flask_thread = Thread(target=run_flask, daemon=True, args=("localhost", 1234,))
+    flask_thread = Thread(target=run_flask, daemon=True, args=(web_server_host[0], web_server_host[1],))
     flask_thread.start()
 
     # Start the asyncio event loop

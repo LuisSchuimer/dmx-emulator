@@ -40,21 +40,46 @@
             color: white;
             font-weight: bold;
         }
+        .details-container {
+            margin-top: 20px;
+            background-color: #444;
+            padding: 10px;
+            border: 1px solid #666;
+            text-align: left;
+        }
+        .details-container h3 {
+            margin: 0;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        .details-container p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
     <header>
         <h1>DMX Emulator Renderer</h1>
         <p>Emulation of DMX lights in realtime</p>
+        <p>Last Update:</p>
+        <h5 id="last-update"></h5>
     </header>
     <div class="content">
         <div id="lights-container" class="loading">Loading lights...</div>
+        <div id="details-container" class="details-container">
+            <h3>Light Details</h3>
+            <p>Select a light to see more details.</p>
+        </div>
     </div>
     <center>
-        <h6>(C) 2024 Luis Schuimer</h6>
+        <h6>(C) 2024-2025 Luis Schuimer</h6>
     </center>
     <script>
         const lightsContainer = document.getElementById('lights-container');
+        const lastUpdate = document.getElementById("last-update");
+        const detailsContainer = document.getElementById('details-container');
+        let selectedLightId = null;
 
         const eventSource = new EventSource('/listen');
 
@@ -63,21 +88,55 @@
                 // Parse JSON data from the SSE message
                 const lightsData = JSON.parse(event.data);
 
+                // Extract timestamp and update it
+                const { timestamp, ...lights } = lightsData;
+                if (timestamp) lastUpdate.textContent = timestamp;
+
                 // Clear container and dynamically render lights
                 lightsContainer.innerHTML = '';
                 const stage = document.createElement('div');
                 stage.className = 'stage';
 
-                for (const [name, light] of Object.entries(lightsData)) {
+                for (const [id, light] of Object.entries(lights)) {
                     const lightElement = document.createElement('div');
                     lightElement.className = 'light';
                     lightElement.style.backgroundColor = `rgb(${light.r || 0}, ${light.g || 0}, ${light.b || 0})`;
                     lightElement.style.opacity = light.br;
-                    lightElement.textContent = name;
+                    lightElement.textContent = light.name;
+                    lightElement.dataset.id = id;
+                    lightElement.dataset.name = light.name;
+                    lightElement.dataset.brightness = light.br;
+                    lightElement.dataset.red = light.r || 0;
+                    lightElement.dataset.green = light.g || 0;
+                    lightElement.dataset.blue = light.b || 0;
+
+                    // Add click event to show details
+                    lightElement.addEventListener('click', () => {
+                        selectedLightId = id;
+                        showDetails(lightElement.dataset);
+                    });
+
                     stage.appendChild(lightElement);
+
+                    // Automatically update the details if the selected light is present
+                    if (id === selectedLightId) {
+                        showDetails({
+                            id,
+                            name: light.name,
+                            brightness: light.br,
+                            red: light.r || 0,
+                            green: light.g || 0,
+                            blue: light.b || 0,
+                        });
+                    }
                 }
 
                 lightsContainer.appendChild(stage);
+
+                // Clear details if the selected light is no longer present
+                if (selectedLightId && !lights[selectedLightId]) {
+                    clearDetails();
+                }
             } catch (error) {
                 console.error('Error processing SSE data:', error);
                 lightsContainer.innerHTML = `<p>Error displaying lights data</p>`;
@@ -87,6 +146,24 @@
         eventSource.onerror = () => {
             lightsContainer.innerHTML = `<p>Renderer is offline</p>`;
         };
+
+        function showDetails(data) {
+            detailsContainer.innerHTML = `
+                <h3>Light Details</h3>
+                <p><strong>ID:</strong> ${data.id}</p>
+                <p><strong>Name:</strong> ${data.name}</p>
+                <p><strong>Brightness:</strong> ${data.brightness}</p>
+                <p><strong>Color (RGB):</strong> (${data.red}, ${data.green}, ${data.blue})</p>
+            `;
+        }
+
+        function clearDetails() {
+            detailsContainer.innerHTML = `
+                <h3>Light Details</h3>
+                <p>No light selected or the selected light is no longer available.</p>
+            `;
+            selectedLightId = null;
+        }
     </script>
 </body>
 </html>

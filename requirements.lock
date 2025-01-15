@@ -12,16 +12,10 @@
 -e file:.
 blinker==1.9.0
     # via flask
-certifi==2024.12.14
-    # via requests
-charset-normalizer==3.4.0
-    # via requests
 click==8.1.8
     # via flask
 flask==3.1.0
     # via dmx-emulator
-idna==3.10
-    # via requests
 itsdangerous==2.2.0
     # via flask
 jinja2==3.1.5
@@ -29,12 +23,6 @@ jinja2==3.1.5
 markupsafe==3.0.2
     # via jinja2
     # via werkzeug
-peewee==3.17.8
-    # via dmx-emulator
-requests==2.32.3
-    # via dmx-emulator
-urllib3==2.3.0
-    # via requests
 waitress==3.0.2
     # via dmx-emulator
 werkzeug==3.1.3

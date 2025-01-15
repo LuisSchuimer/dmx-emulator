@@ -2,6 +2,8 @@ from typing import (
     Tuple,
     Literal
 )
+from dmx_emulator.logger import log
+from uuid import uuid4
 import socket
 from dmx_emulator.exceptions import *
 
@@ -82,6 +84,7 @@ class Defaults:
 class Light:
     def __init__(self, config: Light_Config, name: str = "DMX Light"):
         self.name = name
+        self.id = str(uuid4())
         self.config = config
 
 class Emulator_Config:
@@ -107,6 +110,7 @@ class Emulator:
                 self.connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.connection.connect(self.render_server)
             except socket.error as e:
+                log.error(f"Failed to establish connection to the push-server {self.render_server}")
                 self.connection = None
 
     def _close_connection(self):
@@ -156,6 +160,7 @@ class Emulator:
                         values = self._get_channel_values(light)
                         data = {
                             "name": str(light.name),
+                            "id": str(light.id),
                             "r": int(values["r"]),
                             "g": int(values["g"]),
                             "b": int(values["b"]),
@@ -175,6 +180,7 @@ class Emulator:
                             values = self._get_channel_values(light)
                             data = {
                                 "name": str(light.name),
+                                "id": str(light.id),
                                 "r": int(values["r"]),
                                 "g": int(values["g"]),
                                 "b": int(values["b"]),
@@ -185,13 +191,14 @@ class Emulator:
     def start_render(self):
         self.started = True
         self._establish_connection()
-        clear_data = {"clear": True}
+        clear_data = {"clear": 1}
         self._send_data(clear_data)
 
         for light in self.config.lights:
             values = self._get_channel_values(light)
             data = {
                 "name": str(light.name),
+                "id": str(light.id),
                 "r": int(values["r"]),
                 "g": int(values["g"]),
                 "b": int(values["b"]),
